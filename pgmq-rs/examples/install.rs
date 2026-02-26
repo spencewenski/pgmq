@@ -14,7 +14,7 @@ async fn main() {
         .await
         .expect("failed to connect to postgres");
 
-    let _ = queue.install_sql(Some(&"1.10.0".to_string())).await;
+    let _ = queue.install_sql().await;
 
     queue
         .create("my_queue")

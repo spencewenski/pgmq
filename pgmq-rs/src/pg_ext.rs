@@ -1,7 +1,5 @@
 use crate::errors::PgmqError;
 use crate::types::{Message, QUEUE_PREFIX};
-#[cfg(feature = "cli")]
-use crate::util::install_pgmq;
 use crate::util::{check_input, connect};
 use log::info;
 use serde::{Deserialize, Serialize};
@@ -42,18 +40,16 @@ impl PGMQueueExt {
         }
     }
 
-    #[cfg(feature = "cli")]
-    pub async fn install_sql_with_cxn(
-        &self,
-        pool: &Pool<Postgres>,
-        version: Option<&String>,
-    ) -> Result<(), PgmqError> {
-        install_pgmq(pool, version).await
+    #[cfg(feature = "install")]
+    #[doc = include_str!("./install/install_sql.md")]
+    pub async fn install_sql_with_cxn(&self, pool: &Pool<Postgres>) -> Result<(), PgmqError> {
+        crate::install::install_sql(pool).await
     }
 
-    #[cfg(feature = "cli")]
-    pub async fn install_sql(&self, version: Option<&String>) -> Result<(), PgmqError> {
-        self.install_sql_with_cxn(&self.connection, version).await
+    #[cfg(feature = "install")]
+    #[doc = include_str!("./install/install_sql.md")]
+    pub async fn install_sql(&self) -> Result<(), PgmqError> {
+        self.install_sql_with_cxn(&self.connection).await
     }
 
     pub async fn init_with_cxn<'c, E: sqlx::Executor<'c, Database = Postgres>>(

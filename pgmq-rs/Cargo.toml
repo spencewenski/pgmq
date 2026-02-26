@@ -18,7 +18,8 @@ required-features = ["cli"]
 
 [features]
 default = []
-cli = ["clap", "futures-util", "reqwest", "tokio/rt"]
+cli = ["clap", "futures-util", "reqwest", "tokio/rt", "install"]
+install = ["futures-util", "include_dir", "regex", "itertools"]
 
 [dependencies]
 chrono = { version = "0.4.23", features = ["serde"] }
@@ -35,6 +36,9 @@ reqwest = { version = "0.11", features = ["json"], optional = true }
 futures-util = { version = "0.3.31", optional = true }
 clap = { version = "4.0", features = ["derive"], optional = true }
 
+include_dir = { version = "0.7.4", optional = true }
+regex = { version = "1.12.3", optional = true }
+itertools = { version = "0.14.0", optional = true }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
@@ -44,6 +48,7 @@ env_logger = "0.10.0"
 rand = "0.8.5"
 regex = "1.5.4"
 lazy_static = "1.4.0"
+insta = "1.46.3"
 
 # If a consumer has both the `time` and `chrono` features of `sqlx` enabled, `sqlx` will default to using
 # `OffsetDateTime` (from `time`) for timestamp fields instead of `DateTime<Utc>` (from `chrono`), causing a compilation

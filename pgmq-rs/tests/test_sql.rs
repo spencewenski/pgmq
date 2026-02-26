@@ -41,7 +41,7 @@ async fn test_sql_lifecycle() {
         Ok(value) if !value.is_empty() => Some(value),
         _ => None,
     };
-    queue.install_sql(v.as_ref()).await.unwrap();
+    queue.install_sql().await.unwrap();
     queue.create(&test_queue).await.unwrap();
 
     let sent_msg = MyMessage::default();
