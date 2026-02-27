@@ -6,6 +6,7 @@ use std::process;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
+    panic!("Foo");
     log::error!("log1");
     let matches = Command::new("pgmq-cli")
         .about("PGMQ CLI tool for installing and managing PostgreSQL message queues")
