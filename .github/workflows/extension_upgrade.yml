@@ -54,7 +54,7 @@ jobs:
       - name: Stash test files from CI branch
         run: cp -r pgmq-extension/client-tests /tmp/upgrade-client-tests
 
-      # The sql-only installation method in the rust client that we're testing was added at version `1.11.0` and
+      # The sql-only installation method in the rust client that we're testing was added at version `1.9.0` and
       # therefore does not exist on earlier branches, so copy it to a temp location that survives the
       # `git checkout` to the old tag.
       - name: Stash rust client from CI branch
@@ -66,9 +66,9 @@ jobs:
         if: ${{ matrix.install == 'ext' }}
         run: git checkout tags/v1.5.0
 
-      - name: Checkout old version (v1.11.0)
+      - name: Checkout old version (v1.9.0)
         if: ${{ matrix.install == 'sql' }}
-        run: git checkout tags/v1.11.0
+        run: git checkout tags/v1.9.0
 
       - name: Install pg_partman
         run: |
@@ -84,7 +84,7 @@ jobs:
           make install
           psql -c "CREATE EXTENSION pgmq;"
 
-      - name: Install pgmq v1.11.0 from sql
+      - name: Install pgmq v1.9.0 from sql
         if: ${{ matrix.install == 'sql' }}
         run: |
           # Replace the old rust client code with the current one

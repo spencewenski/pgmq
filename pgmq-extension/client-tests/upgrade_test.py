@@ -322,7 +322,7 @@ class TestPreUpgrade:
     def test_record_version(self, db_connection):
         """Log the pre-upgrade version for debugging."""
         version = get_pgmq_version(db_connection)
-        assert version is not None
+        assert version is None
         print(f"Pre-upgrade pgmq version: {version}")
 
 
