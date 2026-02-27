@@ -38,7 +38,7 @@ async fn main() {
         }
         _ => {
             log::error!("No valid subcommand provided. Use --help for usage information.");
-            process::exit(1);
+            // process::exit(1);
         }
     }
 }
