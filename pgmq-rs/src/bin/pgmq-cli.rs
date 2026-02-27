@@ -1,6 +1,5 @@
 use clap::{Arg, Command};
 
-use log;
 use pgmq::install::install_sql;
 use sqlx::PgPool;
 use std::process;

@@ -36,11 +36,6 @@ async fn test_sql_lifecycle() {
         .unwrap();
 
     let queue = pgmq::PGMQueueExt::new(test_db_url, 1).await.unwrap();
-    // assign version from env
-    let v = match env::var("PGMQ_VERSION") {
-        Ok(value) if !value.is_empty() => Some(value),
-        _ => None,
-    };
     queue.install_sql().await.unwrap();
     queue.create(&test_queue).await.unwrap();
 
