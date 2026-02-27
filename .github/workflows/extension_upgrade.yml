@@ -62,7 +62,12 @@ jobs:
           cp -r pgmq-rs /tmp/pgmq-rs
 
       - name: Checkout old version (v1.5.0)
+        if: ${{ matrix.install == 'ext' }}
         run: git checkout tags/v1.5.0
+
+      - name: Checkout old version (v1.11.0)
+        if: ${{ matrix.install == 'sql' }}
+        run: git checkout tags/v1.11.0
 
       - name: Install pg_partman
         run: |
@@ -78,7 +83,7 @@ jobs:
           make install
           psql -c "CREATE EXTENSION pgmq;"
 
-      - name: Install pgmq v1.5.0 from sql
+      - name: Install pgmq v1.11.0 from sql
         if: ${{ matrix.install == 'sql' }}
         run: |
           original_dir=$(pwd)
