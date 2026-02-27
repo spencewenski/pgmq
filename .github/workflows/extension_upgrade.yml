@@ -33,7 +33,7 @@ jobs:
         partman: [ 5.1.0 ]
         install: [ ext, sql ]
     env:
-      DATABASE_URL: postgresql://postgres@localhost:5432/postgres
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
     steps:
       - uses: actions/checkout@v4
         with:
