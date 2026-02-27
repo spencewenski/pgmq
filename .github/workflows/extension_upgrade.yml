@@ -39,6 +39,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+
       - name: Get current branch
         id: current-version
         run: echo "CI_BRANCH=$(git name-rev --name-only HEAD)" >> $GITHUB_OUTPUT
@@ -81,12 +88,15 @@ jobs:
       - name: Install pgmq v1.5.0 from sql
         if: ${{ matrix.install == 'sql' }}
         run: |
+          original_dir=$(pwd}
           rm -rf pgmq-rs
           cp -r /tmp/pgmq-rs pgmq-rs
-          cd pgmq-rs
+          cd "$original_dir/pgmq-rs"
+          echo "foo"
           cargo run --features cli -- install "$DATABASE_URL"
+          echo "bar"
           # Undo changes
-          cd ..
+          cd "$original_dir"
           rm -rf pgmq-rs
           git restore .
 
