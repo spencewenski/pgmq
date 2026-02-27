@@ -81,7 +81,7 @@ jobs:
       - name: Install pgmq v1.5.0 from sql
         if: ${{ matrix.install == 'sql' }}
         run: |
-          original_dir=$(pwd}
+          original_dir=$(pwd)
           rm -rf pgmq-rs
           cp -r /tmp/pgmq-rs pgmq-rs
           cd "$original_dir/pgmq-rs"
