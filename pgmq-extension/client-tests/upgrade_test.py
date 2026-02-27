@@ -197,7 +197,9 @@ def get_pgmq_version(conn):
         with conn.cursor() as cur:
             cur.execute("SELECT version FROM pgmq.__pgmq_migrations")
             rows = cur.fetchall()
-            version = [semver.Version.parse(row[0]) for row in rows].sort()[0] if len(rows) > 0 else None
+            rows = [semver.Version.parse(row[0]) for row in rows]
+            rows.sort()
+            version = rows[0] if len(rows) > 0 else None
 
     return version
 
