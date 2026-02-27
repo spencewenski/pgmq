@@ -182,10 +182,22 @@ def purge_queue(conn, queue_name):
 
 
 def get_pgmq_version(conn):
+    version = None
     with conn.cursor() as cur:
         cur.execute("SELECT extversion FROM pg_extension WHERE extname = 'pgmq'")
         row = cur.fetchone()
-        return row[0] if row else None
+        version = row[0] if row else None
+
+    if version is None:
+        import semver
+        with conn.cursor() as cur:
+            cur.execute("SELECT version FROM pgmq.__pgmq_migrations")
+            rows = cur.fetchall()
+            rows = [semver.Version.parse(row[0]) for row in rows]
+            rows.sort()
+            version = rows[0] if len(rows) > 0 else None
+
+    return version
 
 
 # ---------------------------------------------------------------------------

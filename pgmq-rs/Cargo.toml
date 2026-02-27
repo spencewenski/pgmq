@@ -18,7 +18,7 @@ required-features = ["cli"]
 
 [features]
 default = []
-cli = ["clap", "futures-util", "reqwest", "tokio/rt", "install"]
+cli = ["clap", "futures-util", "reqwest", "tokio/rt", "install", "url/serde"]
 install = ["futures-util", "include_dir", "regex", "itertools"]
 
 [dependencies]
