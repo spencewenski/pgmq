@@ -99,6 +99,7 @@ jobs:
           git restore .
 
       - name: Run SQL tests
+        if: ${{ matrix.install == 'ext' }}
         working-directory: ./pgmq-extension
         run: pg-build-test
 
@@ -130,6 +131,7 @@ jobs:
         run: UPGRADE_PHASE=post uv run pytest upgrade_test.py -v
 
       - name: Run SQL tests
+        if: ${{ matrix.install == 'ext' }}
         working-directory: ./pgmq-extension
         run: pg-build-test
 
