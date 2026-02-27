@@ -152,12 +152,8 @@ def get_metrics(conn, queue_name):
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT queue_name,
-                   queue_length,
-                   newest_msg_age_sec,
-                   oldest_msg_age_sec,
-                   total_messages,
-                   scrape_time
+            SELECT queue_name, queue_length, newest_msg_age_sec, oldest_msg_age_sec,
+                   total_messages, scrape_time
             FROM pgmq.metrics(queue_name => %s::text)
             """,
             (queue_name,),
