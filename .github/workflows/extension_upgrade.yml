@@ -86,6 +86,7 @@ jobs:
           cd pgmq-rs
           cargo run --features cli -- install "$DATABASE_URL"
           # Undo changes
+          cd ..
           rm -rf pgmq-rs
           git restore .
 
