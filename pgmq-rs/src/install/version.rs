@@ -4,10 +4,14 @@ use regex::Regex;
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
+use std::sync::OnceLock;
+
+/// Regex to match a basic semver string, e.g. `1.2.3`.
+static VERSION_REGEX: OnceLock<Result<Regex, regex::Error>> = OnceLock::new();
 
 /// The `pgmq` extension control file. Used to determine which version of `pgmq` would be
 /// installed by running the `pgmq.sql` script.
-const EXTENSION_CONFIG: &str = include_str!(concat!(
+static EXTENSION_CONFIG: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../pgmq-extension/pgmq.control"
 ));
@@ -40,10 +44,10 @@ impl Version {
         let re =
             Regex::new(r"^\s*default_version\s*=\s*'(?<version>.*)'\s*$").map_err(install_err)?;
         let captures = re.captures(version_line).ok_or_else(|| {
-            format!(
+            install_err(format!(
                 "Unable to extract version from extension config: {}",
                 version_line
-            )
+            ))
         })?;
         Self::from_str(&captures["version"])
     }
@@ -53,8 +57,10 @@ impl FromStr for Version {
     type Err = PgmqError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let re = Regex::new(r"(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)").map_err(install_err)?;
-        let captures = re
+        let captures = VERSION_REGEX
+            .get_or_init(|| Regex::new(r"(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)"))
+            .as_ref()
+            .map_err(install_err)?
             .captures(s)
             .ok_or_else(|| install_err(format!("Invalid script name: {}", s)))?;
         Ok(Self {

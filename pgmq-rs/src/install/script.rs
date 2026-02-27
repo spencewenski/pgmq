@@ -10,12 +10,16 @@ use sqlx::{Acquire, Executor, Pool, Postgres};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::str::FromStr;
+use std::sync::OnceLock;
 
 /// The name of the migration script used to perform a fresh installation of `pgmq`.
-const INIT_SCRIPT_NAME: &str = "pgmq.sql";
+static INIT_SCRIPT_NAME: &str = "pgmq.sql";
 
 /// All of the extension's migration scripts.
-const MIGRATION_SCRIPTS: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../pgmq-extension/sql/");
+static MIGRATION_SCRIPTS: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../pgmq-extension/sql/");
+
+/// Regex to match a migration script name, e.g., `pgmq--1.2.3--1.3.4.sql`
+static MIGRATION_SCRIPT_NAME_REGEX: OnceLock<Result<Regex, regex::Error>> = OnceLock::new();
 
 /// Struct to contain metadata for a pgmq extension migration script along with its content.
 #[derive(Debug, Eq)]
@@ -183,8 +187,10 @@ impl ParsedScriptName {
     }
 
     fn from_static_str(name: &'static str) -> Result<Self, PgmqError> {
-        let re = Regex::new(r"pgmq--(?<from>.*)--(?<to>.*).sql").map_err(install_err)?;
-        let captures = re
+        let captures = MIGRATION_SCRIPT_NAME_REGEX
+            .get_or_init(|| Regex::new(r"pgmq--(?<from>.*)--(?<to>.*).sql"))
+            .as_ref()
+            .map_err(install_err)?
             .captures(name)
             .ok_or_else(|| install_err(format!("Invalid script name: {}", name)))?;
         Ok(Self {
@@ -223,7 +229,7 @@ impl PartialOrd for ParsedScriptName {
 mod tests {
     use include_dir::{include_dir, Dir};
 
-    const TEST_MIGRATION_SCRIPTS: Dir<'static> =
+    static TEST_MIGRATION_SCRIPTS: Dir<'static> =
         include_dir!("$CARGO_MANIFEST_DIR/src/install/test_migrations/");
 
     mod parsed_script_name {

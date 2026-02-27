@@ -3,6 +3,7 @@ use thiserror::Error;
 use url::ParseError;
 
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum PgmqError {
     /// a json parsing error
     #[error("json parsing error {0}")]
@@ -27,18 +28,7 @@ pub enum PgmqError {
     HttpError(#[from] reqwest::Error),
 
     /// a general error for installation operations
+    #[cfg(feature = "install")]
     #[error("installation error: {0}")]
     InstallationError(String),
-}
-
-impl From<Box<dyn std::error::Error>> for PgmqError {
-    fn from(err: Box<dyn std::error::Error>) -> Self {
-        PgmqError::InstallationError(err.to_string())
-    }
-}
-
-impl From<String> for PgmqError {
-    fn from(err: String) -> Self {
-        PgmqError::InstallationError(err)
-    }
 }
