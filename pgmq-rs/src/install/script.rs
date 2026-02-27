@@ -72,7 +72,6 @@ impl MigrationScript {
             .await
             .map_err(install_err)?;
 
-        log::error!("Fetching scripts");
         let scripts = Self::get_scripts_internal(
             Version::get_pgmq_version()?,
             &MIGRATION_SCRIPTS,

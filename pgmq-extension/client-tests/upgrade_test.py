@@ -181,12 +181,20 @@ def purge_queue(conn, queue_name):
         return cur.fetchone()[0]
 
 
-# Todo: add sql-only version
 def get_pgmq_version(conn):
+    version = None
     with conn.cursor() as cur:
         cur.execute("SELECT extversion FROM pg_extension WHERE extname = 'pgmq'")
         row = cur.fetchone()
-        return row[0] if row else None
+        version = row[0] if row else None
+
+    if version is None:
+        import semver
+        cur.execute("SELECT version FROM pgmq.__pgmq_migrations")
+        rows = cur.fetchall()
+        version = [semver.Version.parse(row[0]) for row in rows].sort()[0] if len(rows) > 0 else None
+
+    return version
 
 
 # ---------------------------------------------------------------------------
@@ -311,8 +319,7 @@ class TestPreUpgrade:
     def test_record_version(self, db_connection):
         """Log the pre-upgrade version for debugging."""
         version = get_pgmq_version(db_connection)
-#         Todo: uncomment
-#         assert version is not None
+        assert version is not None
         print(f"Pre-upgrade pgmq version: {version}")
 
 
@@ -332,8 +339,7 @@ class TestPostUpgradeStateIntact:
     def test_version_changed(self, db_connection):
         """Log the post-upgrade version for debugging."""
         version = get_pgmq_version(db_connection)
-#         Todo: uncomment
-#         assert version is not None
+        assert version is not None
         print(f"Post-upgrade pgmq version: {version}")
 
     @post_only

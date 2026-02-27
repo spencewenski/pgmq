@@ -33,7 +33,7 @@ jobs:
         partman: [ 5.1.0 ]
         install: [ ext, sql ]
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      DATABASE_URL: postgresql://postgres@localhost:5432/postgres
     steps:
       - uses: actions/checkout@v4
         with:
@@ -54,8 +54,9 @@ jobs:
       - name: Stash test files from CI branch
         run: cp -r pgmq-extension/client-tests /tmp/upgrade-client-tests
 
-      # The sql-only installation method in the rust client was updated after 1.11.0 and therefore does
-      # not exist on earlier branches, so copy it to a temp location that survives the git checkout to the old tag.
+      # The sql-only installation method in the rust client that we're testing was added at version `1.11.0` and
+      # therefore does not exist on earlier branches, so copy it to a temp location that survives the
+      # `git checkout` to the old tag.
       - name: Stash rust client from CI branch
         if: ${{ matrix.install == 'sql' }}
         run: |
@@ -86,14 +87,18 @@ jobs:
       - name: Install pgmq v1.11.0 from sql
         if: ${{ matrix.install == 'sql' }}
         run: |
+          # Replace the old rust client code with the current one
           original_dir=$(pwd)
           rm -rf pgmq-rs
           cp -r /tmp/pgmq-rs pgmq-rs
           cd "$original_dir/pgmq-rs"
-          echo "foo"
+
+          # Build and run the rust client to install pgmq from sql
+          # Note: Because we're re-building the new rust client while an old version of the repo is checked out,
+          # the client will embed the migration scripts from the old version.
           cargo run --features cli -- install "$DATABASE_URL"
-          echo "bar"
-          # Undo changes
+
+          # Restore the old rust client
           cd "$original_dir"
           rm -rf pgmq-rs
           git restore .

@@ -9,7 +9,6 @@ use sqlx::{Pool, Postgres};
 #[doc = include_str!("install_sql.md")]
 pub async fn install_sql(pool: &Pool<Postgres>) -> Result<(), PgmqError> {
     for script in MigrationScript::get_scripts(pool).await? {
-        log::error!("Running script: {}", script.name.original);
         script.run(pool).await?;
     }
 
