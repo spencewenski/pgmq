@@ -30,9 +30,7 @@ async fn main() {
                 .await
                 .expect("Failed to connect to database");
 
-            if let Err(e) = install_sql(&pool).await {
-                process::exit(1);
-            }
+            install_sql(&pool).await.unwrap()
         }
         _ => {
             log::error!("No valid subcommand provided. Use --help for usage information.");
