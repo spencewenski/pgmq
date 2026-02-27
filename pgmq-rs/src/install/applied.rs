@@ -21,12 +21,14 @@ impl AppliedMigration {
     pub async fn create_table(pool: &Pool<Postgres>) -> Result<(), PgmqError> {
         let mut tx = pool.begin().await?;
 
+        log::error!("Creating schema");
         // Because this may run before `pgmq` has been installed, we need to ensure the `pgmq`
         // DB schema is created.
         sqlx::query("CREATE SCHEMA IF NOT EXISTS pgmq;")
             .execute(tx.acquire().await?)
             .await?;
 
+        log::error!("Creating table");
         sqlx::query(
         "CREATE TABLE IF NOT EXISTS pgmq.__pgmq_migrations ( name TEXT PRIMARY KEY NOT NULL, version TEXT NOT NULL, run_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP);",
         )
@@ -40,6 +42,7 @@ impl AppliedMigration {
 
     /// Fetch all of the migrations that were previously applied.
     pub async fn fetch_all(pool: &Pool<Postgres>) -> Result<Vec<AppliedMigration>, PgmqError> {
+        log::error!("Fetching applied scripts");
         let applied_migrations = sqlx::query("SELECT name, version FROM pgmq.__pgmq_migrations")
             .fetch_all(pool)
             .await?

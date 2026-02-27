@@ -80,12 +80,11 @@ jobs:
 
       - name: Install pgmq v1.5.0 from sql
         if: ${{ matrix.install == 'sql' }}
-        # Todo: we need to use the 1.5.0 version of the sql scripts, but we need the new rust installation logic
         run: |
           rm -rf pgmq-rs
           cp -r /tmp/pgmq-rs pgmq-rs
           cd pgmq-rs
-          cargo run --features cli -- install $DATABASE_URL
+          cargo run --features cli -- install "$DATABASE_URL"
           # Undo changes
           rm -rf pgmq-rs
           git restore .
