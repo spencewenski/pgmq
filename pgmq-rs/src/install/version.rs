@@ -58,11 +58,11 @@ impl FromStr for Version {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let captures = VERSION_REGEX
-            .get_or_init(|| Regex::new(r"(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)"))
+            .get_or_init(|| Regex::new(r"^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)$"))
             .as_ref()
             .map_err(install_err)?
             .captures(s)
-            .ok_or_else(|| install_err(format!("Invalid script name: {}", s)))?;
+            .ok_or_else(|| install_err(format!("Invalid version: '{}'", s)))?;
         Ok(Self {
             major: u32::from_str(&captures["major"]).map_err(install_err)?,
             minor: u32::from_str(&captures["minor"]).map_err(install_err)?,
@@ -113,6 +113,56 @@ mod tests {
     use std::str::FromStr;
 
     #[test]
+    fn get_pgmq_version() {
+        let extension_config = "default_version = '1.11.0'";
+        let pgmq_version = Version::get_pgmq_version_from_contents(extension_config).unwrap();
+        assert_debug_snapshot!(pgmq_version);
+    }
+
+    #[test]
+    fn get_pgmq_version_extra_whitespace() {
+        let extension_config = "    default_version   =    '1.11.0'    ";
+        let pgmq_version = Version::get_pgmq_version_from_contents(extension_config).unwrap();
+        assert_debug_snapshot!(pgmq_version);
+    }
+
+    #[test]
+    fn get_pgmq_version_err_invalid_version() {
+        let extension_config = "default_version = 'a.b.c'";
+        let pgmq_version = Version::get_pgmq_version_from_contents(extension_config);
+        assert_debug_snapshot!(pgmq_version);
+    }
+
+    #[test]
+    fn get_pgmq_version_err_version_not_present() {
+        let extension_config = "";
+        let pgmq_version = Version::get_pgmq_version_from_contents(extension_config);
+        assert_debug_snapshot!(pgmq_version);
+    }
+
+    #[test]
+    fn get_pgmq_version_err_missing_quotes() {
+        let extension_config = "default_version = 1.11.0";
+        let pgmq_version = Version::get_pgmq_version_from_contents(extension_config);
+        assert_debug_snapshot!(pgmq_version);
+    }
+
+    #[test]
+    fn get_pgmq_version_no_whitespace() {
+        let extension_config = "default_version='1.11.0'";
+        let pgmq_version = Version::get_pgmq_version_from_contents(extension_config).unwrap();
+        assert_debug_snapshot!(pgmq_version);
+    }
+
+    #[test]
+    fn get_pgmq_version_actual_config_file() {
+        let version = Version::get_pgmq_version();
+        // Don't check for a specific version, just check that the version was successfully parsed.
+        // Otherwise, this test will fail every time the version is updated.
+        assert!(version.is_ok());
+    }
+
+    #[test]
     fn from_str() {
         let version = Version::from_str("1.11.0").unwrap();
         assert_eq!(
@@ -126,44 +176,19 @@ mod tests {
     }
 
     #[test]
-    fn from_str_err() {
-        let version = Version::from_str("invalid.version");
-        assert!(version.is_err());
+    fn from_str_err_not_enough_segments() {
+        let version = Version::from_str("1.2");
+        assert_debug_snapshot!(version);
+    }
+
+    #[test]
+    fn from_str_err_invalid_segment_values() {
         let version = Version::from_str("a.b.c");
-        assert!(version.is_err());
+        assert_debug_snapshot!(version);
     }
 
     #[test]
-    fn get_pgmq_version() {
-        let extension_config = r"default_version = '1.11.0'";
-        let pgmq_version = Version::get_pgmq_version_from_contents(extension_config).unwrap();
-        assert_eq!(pgmq_version, Version::from_str("1.11.0").unwrap());
-    }
-
-    #[test]
-    fn get_pgmq_version_extra_whitespace() {
-        let extension_config = r"    default_version   =    '1.11.0'    ";
-        let pgmq_version = Version::get_pgmq_version_from_contents(extension_config).unwrap();
-        assert_eq!(pgmq_version, Version::from_str("1.11.0").unwrap());
-    }
-
-    #[test]
-    fn get_pgmq_version_no_whitespace() {
-        let extension_config = r"default_version='1.11.0'";
-        let pgmq_version = Version::get_pgmq_version_from_contents(extension_config).unwrap();
-        assert_eq!(pgmq_version, Version::from_str("1.11.0").unwrap());
-    }
-
-    #[test]
-    fn get_pgmq_version_actual_config_file() {
-        let version = Version::get_pgmq_version();
-        // Don't check for a specific version, just check that the version was successfully parsed.
-        // Otherwise, this test will fail every time the version is updated.
-        assert!(version.is_ok());
-    }
-
-    #[test]
-    fn sort() {
+    fn sort_and_unique() {
         let versions = [
             "0.1.0", "1.1.1", "2.0.1", "2.0.0", "2.0.0", "1.11.1", "1.0.1",
         ]

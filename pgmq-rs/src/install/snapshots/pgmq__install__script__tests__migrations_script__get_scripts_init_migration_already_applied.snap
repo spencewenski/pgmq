@@ -17,7 +17,7 @@ expression: scripts
                 patch: 1,
             },
         },
-        content: "-- 1.11.0 -> 1.11.1",
+        content: "-- 1.11.0 -> 1.11.1\n",
     },
     MigrationScript {
         name: ParsedScriptName {
@@ -33,7 +33,7 @@ expression: scripts
                 patch: 2,
             },
         },
-        content: "-- 1.11.1 -> 1.11.2",
+        content: "-- 1.11.1 -> 1.11.2\n",
     },
     MigrationScript {
         name: ParsedScriptName {
@@ -49,6 +49,6 @@ expression: scripts
                 patch: 0,
             },
         },
-        content: "-- 1.11.2 -> 2.0.0",
+        content: "-- 1.11.2 -> 2.0.0\n",
     },
 ]
