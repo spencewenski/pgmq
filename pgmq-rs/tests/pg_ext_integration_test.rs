@@ -83,7 +83,7 @@ async fn install_pgmq(queue: &pgmq::PGMQueueExt) -> bool {
     #[cfg(feature = "install")]
     let result = queue.install_sql().await.map(|_| true);
     #[cfg(not(feature = "install"))]
-    let result = queue.install().await;
+    let result = queue.init().await;
 
     result.expect("failed to init pgmq")
 }
