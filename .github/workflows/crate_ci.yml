@@ -68,7 +68,7 @@ jobs:
         run: cargo sqlx prepare --check
 
   tests_ext_sql_install:
-    name: Run tests with sql installation
+    name: Run PGMQueueExt tests with sql installation
     runs-on: ubuntu-22.04
     needs: lint
     services:
@@ -93,10 +93,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Install pg_partman
         run: psql "$DATABASE_URL" -c "CREATE EXTENSION IF NOT EXISTS pg_partman;"
-      - name: Install pgmq using SQL
-        run: cargo run --features cli -- install "$DATABASE_URL"
-      - name: Run all rust tests with the `install` feature enabled
-        run: cargo test --features install
+      - name: Run PGMQueueExt tests with sql installation
+        run: make test.pgmqext_sql
 
   test_sql_install:
     name: Test SQL Installation

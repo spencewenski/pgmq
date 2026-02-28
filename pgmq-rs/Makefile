@@ -23,5 +23,10 @@ test:
 	cargo test --lib --all-features
 	cargo test
 
+# Run the tests for `PGMQueueExt` with the SQL-only installation approach. Assumes the DB is already running and
+# `pg_partman` is an available extension in the DB.
+test.pgmqext_sql:
+	cargo test --features install --test pg_ext_integration_test
+
 setup.env:
 	sqlx migrate run --database-url ${DATABASE_URL}
