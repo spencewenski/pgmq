@@ -7,7 +7,9 @@ The Rust client for PGMQ. This gives you an ORM-like experience with the Postgre
 
 ## Installing PGMQ
 
-PGMQ can be installed into any existing Postgres database using this Rust client.
+PGMQ can be installed into any existing Postgres database using this Rust client. The installation performed by the Rust
+client is versioned, which means it can be used to perform a fresh installation of PGMQ, or it can upgrade an existing
+installation to the latest version.
 
 Run standard Postgres using Docker:
 
@@ -27,21 +29,18 @@ pgmq-cli install postgres://postgres:postgres@localhost:5432/postgres
 
 ### In Rust
 
-Refer to the  [install example](examples/install.rs), or add PGMQ to your Cargo.toml with the cli feature enabled:
+Refer to the [install example](examples/install.rs), or add PGMQ to your `Cargo.toml` with the `install-sql` feature enabled:
 
 ```bash
-cargo add pgmq --features cli
+cargo add pgmq --features install-sql
 ```
 
 ```rust
-use pgmq::PGMQueueExt;
-
-let db_url = "postgres://postgres:postgres@localhost:5432/postgres".to_string();
-let queue = pgmq::PGMQueueExt::new(db_url, 2)
-    .await
-    .expect("failed to connect to postgres");
-
-queue.install_sql(Some(&"1.10.0".to_string())).await;
+async fn initialize_pgmq(pool: sqlx::Pool<sqlx::Postgres>) -> Result<(), pgmq::PgmqError> {
+    let queue = pgmq::PGMQueueExt::new_with_pool(pool).await;
+    queue.install_sql().await?;
+    Ok(())
+}
 ```
 
 ## Examples
@@ -56,7 +55,7 @@ cargo run --example basic
 How to install PGMQ using the Rust client from within your application:
 
 ```bash
-cargo run --example install --features cli
+cargo run --example install --features install-sql
 ```
 
 ## Serialization and Deserialization

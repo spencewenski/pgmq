@@ -1,4 +1,4 @@
-Install `pgmq` using the sql-only approach. This method will perform a fresh installation if
+Install `pgmq` using the SQL-only approach. This method will perform a fresh installation if
 `pgmq` is not installed, or it will upgrade `pgmq` to the latest version if it was previously
 installed and there's a newer version available.
 

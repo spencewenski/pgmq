@@ -78,6 +78,10 @@ This will remove all objects created by the extension, including tables, functio
 
 ## SQL-only installation
 
+### Unversioned installation
+
+> ⚠️ This installation approach is not versioned and only works for a fresh installation of `pgmq`.
+
 PGMQ consists of raw SQL objects and can also be installed directly into any Postgres instance. This method is preferred when extension installation or access to the server host is not available. This method will create a schema named `pgmq` and all SQL objects in that schema.
 
 Simply executing the SQL definition file on your Postgres instance will create all the required objects. This can be accomplished by cloning the repo then running the following commands. This requires `psql` to be installed and available on your `PATH`.
@@ -92,7 +96,28 @@ psql -f pgmq-extension/sql/pgmq.sql postgres://postgres:postgres@localhost:5432/
 
 Replace the postgres user, password, and database with the appropriate values for your Postgres instance.
 
-## Uninstalling the SQL-only install
+### Versioned installation
+
+Some clients provide a versioned SQL-only installation. This allows either a fresh installation or `pgmq`, or upgrading
+the existing installation to the latest version. For example, the Rust client supports versioned installation via a CLI:
+
+```bash
+cargo install pgmq --features cli --bin pgmq-cli
+
+pgmq-cli install postgres://postgres:postgres@localhost:5432/postgres
+```
+
+Or via the `pgmq::PGMQueueExt` struct (requires the `install-sql` feature):
+
+```rust
+async fn initialize_pgmq(pool: sqlx::Pool<sqlx::Postgres>) -> Result<(), pgmq::PgmqError> {
+    let queue = pgmq::PGMQueueExt::new_with_pool(pool).await;
+    queue.install_sql().await?;
+    Ok(())
+}
+```
+
+### Uninstalling the SQL-only installation
 
 All objects are created in the `pgmq` schema, so the simplest way to remove the project is to drop the schema:
 

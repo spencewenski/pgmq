@@ -80,9 +80,9 @@ async fn archive_rowcount(qname: &str, connection: &Pool<Postgres>) -> i64 {
 }
 
 async fn install_pgmq(queue: &pgmq::PGMQueueExt) -> bool {
-    #[cfg(feature = "install")]
+    #[cfg(feature = "install-sql")]
     let result = queue.install_sql().await.map(|_| true);
-    #[cfg(not(feature = "install"))]
+    #[cfg(not(feature = "install-sql"))]
     let result = queue.init().await;
 
     result.expect("failed to init pgmq")

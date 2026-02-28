@@ -14,7 +14,7 @@ pub struct Arguments {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
-    /// Install PGMQ into a PostgreSQL database using the sql-only installation approach
+    /// Install PGMQ into a PostgreSQL database using the SQL-only installation approach
     Install(InstallArgs),
 }
 

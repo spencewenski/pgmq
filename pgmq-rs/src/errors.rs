@@ -22,13 +22,8 @@ pub enum PgmqError {
     #[error("invalid queue name: '{name}'")]
     InvalidQueueName { name: String },
 
-    /// a reqwest error (only when the `cli` feature is enabled)
-    #[cfg(feature = "cli")]
-    #[error("http request error {0}")]
-    HttpError(#[from] reqwest::Error),
-
     /// a general error for installation operations
-    #[cfg(feature = "install")]
+    #[cfg(feature = "install-sql")]
     #[error("installation error: {0}")]
     InstallationError(String),
 }

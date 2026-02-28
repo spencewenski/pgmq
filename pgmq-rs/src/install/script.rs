@@ -152,7 +152,7 @@ impl MigrationScript {
         Ok(script)
     }
 
-    /// Get all sql scripts required to install and/or upgrade the `pgmq` extension.
+    /// Get all SQL scripts required to install and/or upgrade the `pgmq` extension.
     pub async fn get_scripts(
         tx: &mut Transaction<'static, Postgres>,
     ) -> Result<Vec<MigrationScript>, PgmqError> {
