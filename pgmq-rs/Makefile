@@ -5,7 +5,7 @@ EXTENSION_DB:=postgres://postgres:postgres@0.0.0.0:5432/pgmq_ext_test
 format:
 	cargo sqlx prepare --database-url ${DATABASE_URL}
 	cargo +nightly fmt --all
-	cargo clippy
+	cargo clippy --all-features
 
 update.readme:
 	cargo readme \
@@ -20,6 +20,7 @@ test:
 	sqlx migrate run --database-url ${DATABASE_URL}
 	psql ${DATABASE_URL} -c "CREATE DATABASE pgmq_ext_test;"
 	sqlx migrate run --database-url ${EXTENSION_DB}
+	cargo test --lib --all-features
 	cargo test
 
 setup.env:
