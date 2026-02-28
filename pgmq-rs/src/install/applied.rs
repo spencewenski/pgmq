@@ -3,7 +3,7 @@ use crate::install::version::Version;
 use crate::PgmqError;
 use sqlx::postgres::PgArguments;
 use sqlx::query::Query;
-use sqlx::{Acquire, Pool, Postgres, Row};
+use sqlx::{Acquire, Postgres, Row, Transaction};
 use std::str::FromStr;
 
 /// Struct to represent a row of the DB table that tracks which migration scripts have been applied.
@@ -18,8 +18,18 @@ pub struct AppliedMigration {
 
 impl AppliedMigration {
     /// Create the DB table used to keep track of which migration scripts have been applied.
-    pub async fn create_table(pool: &Pool<Postgres>) -> Result<(), PgmqError> {
-        let mut tx = pool.begin().await?;
+    pub async fn create_table(tx: &mut Transaction<'static, Postgres>) -> Result<(), PgmqError> {
+        /*
+        Lock on the `pg_catalog.pg_namespace` table to be sure that only one transaction can run
+        the pgmq SQL installation/upgrade process at once. Without this, it's possible
+        for multiple transactions to attempt to perform the pgmq SQL installation/upgrade
+        process at the same time, and they may conflict when creating the `pgmq` schema or
+        the `pgmq.__pgmq_migrations` table. This is the case even with the `IF NOT EXISTS` in the
+        SQL query.
+         */
+        sqlx::query("LOCK TABLE pg_catalog.pg_namespace in ACCESS EXCLUSIVE MODE;")
+            .execute(tx.acquire().await?)
+            .await?;
 
         // Because this may run before `pgmq` has been installed, we need to ensure the `pgmq`
         // DB schema is created.
@@ -33,15 +43,24 @@ impl AppliedMigration {
         .execute(tx.acquire().await?)
         .await?;
 
-        tx.commit().await?;
+        /*
+        Locking on `pg_catalog.pg_namespace` above is probably sufficient, but we also lock on
+        the `pgmq.__pgmq_migrations` table to be sure that only one transaction can access the
+        list applied migrations at once.
+         */
+        sqlx::query("LOCK TABLE pgmq.__pgmq_migrations in ACCESS EXCLUSIVE MODE;")
+            .execute(tx.acquire().await?)
+            .await?;
 
         Ok(())
     }
 
     /// Fetch all of the migrations that were previously applied.
-    pub async fn fetch_all(pool: &Pool<Postgres>) -> Result<Vec<AppliedMigration>, PgmqError> {
+    pub async fn fetch_all(
+        tx: &mut Transaction<'static, Postgres>,
+    ) -> Result<Vec<AppliedMigration>, PgmqError> {
         let applied_migrations = sqlx::query("SELECT name, version FROM pgmq.__pgmq_migrations")
-            .fetch_all(pool)
+            .fetch_all(tx.acquire().await?)
             .await?
             .into_iter()
             .map(|row| -> Result<AppliedMigration, PgmqError> {

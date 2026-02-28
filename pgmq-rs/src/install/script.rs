@@ -6,7 +6,7 @@ use futures_util::StreamExt;
 use include_dir::{include_dir, Dir};
 use itertools::Itertools;
 use regex::Regex;
-use sqlx::{Acquire, Executor, Pool, Postgres};
+use sqlx::{Acquire, Executor, Postgres, Transaction};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::str::FromStr;
@@ -153,12 +153,12 @@ impl MigrationScript {
     }
 
     /// Get all sql scripts required to install and/or upgrade the `pgmq` extension.
-    pub async fn get_scripts(pool: &Pool<Postgres>) -> Result<Vec<MigrationScript>, PgmqError> {
-        AppliedMigration::create_table(pool).await?;
+    pub async fn get_scripts(
+        tx: &mut Transaction<'static, Postgres>,
+    ) -> Result<Vec<MigrationScript>, PgmqError> {
+        AppliedMigration::create_table(tx).await?;
 
-        let applied_migrations = AppliedMigration::fetch_all(pool)
-            .await
-            .map_err(install_err)?;
+        let applied_migrations = AppliedMigration::fetch_all(tx).await.map_err(install_err)?;
 
         let scripts = Self::get_scripts_internal(
             Version::get_pgmq_version()?,
@@ -208,9 +208,7 @@ impl MigrationScript {
     }
 
     /// Run this script and mark it as applied in the DB.
-    pub async fn run(&self, pool: &Pool<Postgres>) -> Result<(), PgmqError> {
-        let mut tx = pool.begin().await?;
-
+    pub async fn run(&self, tx: &mut Transaction<'static, Postgres>) -> Result<(), PgmqError> {
         {
             let mut stream = tx.fetch_many(self.content.as_ref());
             while let Some(step) = stream.next().await {
@@ -221,8 +219,6 @@ impl MigrationScript {
         AppliedMigration::insert_script(self)?
             .execute(tx.acquire().await?)
             .await?;
-
-        tx.commit().await?;
 
         Ok(())
     }
