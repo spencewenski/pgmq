@@ -1,3 +1,5 @@
+mod visibility_timeout;
+
 use crate::errors::PgmqError;
 use crate::types::{Message, QUEUE_PREFIX};
 #[cfg(feature = "cli")]
@@ -7,6 +9,8 @@ use log::info;
 use serde::{Deserialize, Serialize};
 use sqlx::types::chrono::Utc;
 use sqlx::{Pool, Postgres, Row};
+
+pub use visibility_timeout::VisibilityTimeout;
 
 const DEFAULT_POLL_TIMEOUT_S: i32 = 5;
 const DEFAULT_POLL_INTERVAL_MS: i32 = 250;
@@ -239,13 +243,14 @@ impl PGMQueueExt {
         &self,
         queue_name: &str,
         msg_id: i64,
-        vt: i32,
+        vt: impl Into<VisibilityTimeout>,
         executor: E,
     ) -> Result<Message<T>, PgmqError> {
         check_input(queue_name)?;
+        let vt: VisibilityTimeout = vt.into();
         // queue_name, created_at as "created_at: chrono::DateTime<Utc>", is_partitioned, is_unlogged
         let updated = sqlx::query(
-            r#"SELECT msg_id, read_ct, enqueued_at, vt, message from pgmq.set_vt(queue_name=>$1::text, msg_id=>$2::bigint, vt=>$3::integer);"#
+            r#"SELECT msg_id, read_ct, enqueued_at, vt, message from pgmq.set_vt(queue_name=>$1::text, msg_id=>$2::bigint, vt=>$3::timestamptz);"#
         )
         .bind(queue_name)
         .bind(msg_id)
@@ -268,7 +273,7 @@ impl PGMQueueExt {
         &self,
         queue_name: &str,
         msg_id: i64,
-        vt: i32,
+        vt: impl Into<VisibilityTimeout>,
     ) -> Result<Message<T>, PgmqError> {
         self.set_vt_with_cxn(queue_name, msg_id, vt, &self.connection)
             .await
@@ -308,17 +313,18 @@ impl PGMQueueExt {
         &self,
         queue_name: &str,
         message: &T,
-        delay: u32,
+        delay: impl Into<VisibilityTimeout>,
         executor: E,
     ) -> Result<i64, PgmqError> {
         check_input(queue_name)?;
         let msg = serde_json::json!(&message);
+        let delay: VisibilityTimeout = delay.into();
         let sent = sqlx::query(
-            "SELECT send as msg_id from pgmq.send(queue_name=>$1::text, msg=>$2::jsonb, delay=>$3::int);",
+            "SELECT send as msg_id from pgmq.send(queue_name=>$1::text, msg=>$2::jsonb, delay=>$3::timestamptz);",
         )
         .bind(queue_name)
         .bind(msg)
-        .bind(delay as i32)
+        .bind(*delay)
         .fetch_one(executor)
         .await?;
         Ok(sent.try_get("msg_id")?)
@@ -328,7 +334,7 @@ impl PGMQueueExt {
         &self,
         queue_name: &str,
         message: &T,
-        delay: u32,
+        delay: impl Into<VisibilityTimeout>,
     ) -> Result<i64, PgmqError> {
         self.send_delay_with_cxn(queue_name, message, delay, &self.connection)
             .await
@@ -341,12 +347,13 @@ impl PGMQueueExt {
     >(
         &self,
         queue_name: &str,
-        vt: i32,
+        vt: impl Into<VisibilityTimeout>,
         executor: E,
     ) -> Result<Option<Message<T>>, PgmqError> {
         check_input(queue_name)?;
+        let vt: VisibilityTimeout = vt.into();
         let row = sqlx::query(
-            r#"SELECT msg_id, read_ct, enqueued_at, vt, message from pgmq.read(queue_name=>$1::text, vt=>$2::integer, qty=>$3::integer)"#,
+            r#"SELECT msg_id, read_ct, enqueued_at, vt, message from pgmq.read(queue_name=>$1::text, vt=>$2::timestamptz, qty=>$3::integer)"#,
         )
         .bind(queue_name)
         .bind(vt)
@@ -375,7 +382,7 @@ impl PGMQueueExt {
     pub async fn read<T: for<'de> Deserialize<'de>>(
         &self,
         queue_name: &str,
-        vt: i32,
+        vt: impl Into<VisibilityTimeout>,
     ) -> Result<Option<Message<T>>, PgmqError> {
         self.read_with_cxn(queue_name, vt, &self.connection).await
     }
@@ -387,7 +394,7 @@ impl PGMQueueExt {
     >(
         &self,
         queue_name: &str,
-        vt: i32,
+        vt: impl Into<VisibilityTimeout>,
         max_batch_size: i32,
         poll_timeout: Option<std::time::Duration>,
         poll_interval: Option<std::time::Duration>,
@@ -397,10 +404,11 @@ impl PGMQueueExt {
         let poll_timeout_s = poll_timeout.map_or(DEFAULT_POLL_TIMEOUT_S, |t| t.as_secs() as i32);
         let poll_interval_ms =
             poll_interval.map_or(DEFAULT_POLL_INTERVAL_MS, |i| i.as_millis() as i32);
+        let vt: VisibilityTimeout = vt.into();
         let result = sqlx::query(
             r#"SELECT msg_id, read_ct, enqueued_at, vt, message from pgmq.read_with_poll(
                 queue_name=>$1::text,
-                vt=>$2::integer,
+                vt=>$2::timestamptz,
                 qty=>$3::integer,
                 max_poll_seconds=>$4::integer,
                 poll_interval_ms=>$5::integer
@@ -443,7 +451,7 @@ impl PGMQueueExt {
     pub async fn read_batch_with_poll<T: for<'de> Deserialize<'de>>(
         &self,
         queue_name: &str,
-        vt: i32,
+        vt: impl Into<VisibilityTimeout>,
         max_batch_size: i32,
         poll_timeout: Option<std::time::Duration>,
         poll_interval: Option<std::time::Duration>,
