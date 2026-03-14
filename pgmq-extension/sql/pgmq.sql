@@ -114,11 +114,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Todo: create the integer functions as well for backwards compatibility
+
 -- read_grouped_round_robin
 -- reads messages while preserving FIFO within groups and interleaving across groups (layered round-robin)
 CREATE FUNCTION pgmq.read_grouped_rr(
     queue_name TEXT,
-    vt TIMESTAMP WITH TIME ZONE,
+    vt DOUBLE PRECISION,
     qty INTEGER
 )
 RETURNS SETOF pgmq.message_record AS $$
@@ -181,7 +183,7 @@ BEGIN
         updated_messages AS (
             UPDATE pgmq.%5$I m
             SET
-                vt = %6$L,
+                vt = clock_timestamp() + %6$L,
                 read_ct = read_ct + 1,
                 last_read_at = clock_timestamp()
             FROM selected_messages sm
@@ -193,28 +195,17 @@ BEGIN
         FROM updated_messages
         ORDER BY selection_order;
         $QUERY$,
-        qtable, qtable, qtable, qtable, qtable, vt
+        qtable, qtable, qtable, qtable, qtable, make_interval(secs => vt)
     );
     RETURN QUERY EXECUTE sql USING qty;
 END;
 $$ LANGUAGE plpgsql;
 
--- read_grouped_round_robin - overload that accepts `vt` as a delay in seconds as an integer
-CREATE FUNCTION pgmq.read_grouped_rr(
-    queue_name TEXT,
-    vt INTEGER,
-    qty INTEGER
-)
-RETURNS SETOF pgmq.message_record AS $$
-    SELECT * FROM pgmq.read_grouped_rr(queue_name, clock_timestamp() + make_interval(secs => vt), qty);
-$$ LANGUAGE sql;
-
-
 -- read_grouped_rr_with_poll
 -- reads messages using round-robin layering across groups, with polling support
 CREATE FUNCTION pgmq.read_grouped_rr_with_poll(
     queue_name TEXT,
-    vt TIMESTAMP WITH TIME ZONE,
+    vt DOUBLE PRECISION,
     qty INTEGER,
     max_poll_seconds INTEGER DEFAULT 5,
     poll_interval_ms INTEGER DEFAULT 100
@@ -244,23 +235,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- read_grouped_rr_with_poll - overload that accepts `vt` as a delay in seconds as an integer
-CREATE FUNCTION pgmq.read_grouped_rr_with_poll(
-    queue_name TEXT,
-    vt INTEGER,
-    qty INTEGER,
-    max_poll_seconds INTEGER DEFAULT 5,
-    poll_interval_ms INTEGER DEFAULT 100
-)
-RETURNS SETOF pgmq.message_record AS $$
-    SELECT * FROM pgmq.read_grouped_rr_with_poll(queue_name, clock_timestamp() + make_interval(secs => vt), qty, max_poll_seconds, poll_interval_ms);
-$$ LANGUAGE sql;
-
 -- read_grouped_head:  read the head of N different FIFO groups in a single operation.
 -- This supports horizontal scaling by processing groups in parallel while ensuring message ordering is preserved per group.
 CREATE FUNCTION pgmq.read_grouped_head(
     queue_name TEXT,
-    vt TIMESTAMP WITH TIME ZONE,
+    vt DOUBLE PRECISION,
     qty INTEGER
 )
 RETURNS SETOF pgmq.message_record AS $$
@@ -272,7 +251,7 @@ BEGIN
         $QUERY$
         WITH fifo_groups AS (
             -- Determine the absolute head (oldest) message id per FIFO group, regardless of visibility
-            SELECT
+            SELECT 
                 COALESCE(headers->>'x-pgmq-group', '_default_fifo_group') AS fifo_key,
                 MIN(msg_id) AS head_msg_id
             FROM pgmq.%1$I
@@ -283,35 +262,25 @@ BEGIN
             SELECT g.head_msg_id msg_id
             FROM fifo_groups g
             JOIN pgmq.%1$I q ON q.msg_id = g.head_msg_id
-            WHERE q.vt <= clock_timestamp()
+	        WHERE q.vt <= clock_timestamp()
             ORDER BY q.msg_id
             LIMIT $1
             FOR UPDATE SKIP LOCKED
         )
         UPDATE pgmq.%1$I m
         SET
-            vt = %2$L,
+            vt = clock_timestamp() + %2$L,
             read_ct = read_ct + 1,
             last_read_at = clock_timestamp()
         FROM selected_messages sm
         WHERE m.msg_id = sm.msg_id
         RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.last_read_at, m.vt, m.message, m.headers;
         $QUERY$,
-        qtable, vt
+        qtable, make_interval(secs => vt)
     );
     RETURN QUERY EXECUTE sql USING qty;
 END;
 $$ LANGUAGE plpgsql;
-
--- read_grouped_head - overload that accepts `vt` as a delay in seconds as an integer
-CREATE FUNCTION pgmq.read_grouped_head(
-    queue_name TEXT,
-    vt INTEGER,
-    qty INTEGER
-)
-RETURNS SETOF pgmq.message_record AS $$
-    SELECT * from pgmq.read_grouped_head(queue_name, clock_timestamp() + make_interval(secs => vt), qty)
-$$ LANGUAGE sql;
 
 -- a helper to format table names and check for invalid characters
 CREATE FUNCTION pgmq.format_table_name(queue_name text, prefix text)
@@ -329,7 +298,7 @@ $$ LANGUAGE plpgsql;
 -- reads a number of messages from a queue, setting a visibility timeout on them
 CREATE FUNCTION pgmq.read(
     queue_name TEXT,
-    vt TIMESTAMP WITH TIME ZONE,
+    vt DOUBLE PRECISION,
     qty INTEGER,
     conditional JSONB DEFAULT '{}'
 )
@@ -355,34 +324,24 @@ BEGIN
         UPDATE pgmq.%I m
         SET
             last_read_at = clock_timestamp(),
-            vt = %L,
+            vt = clock_timestamp() + %L,
             read_ct = read_ct + 1
         FROM cte
         WHERE m.msg_id = cte.msg_id
         RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.last_read_at, m.vt, m.message, m.headers;
         $QUERY$,
-        qtable, conditional, qtable, vt
+        qtable, conditional, qtable, make_interval(secs => vt)
     );
     RETURN QUERY EXECUTE sql USING qty;
 END;
 $$ LANGUAGE plpgsql;
-
--- read - overload that accepts `vt` as a delay in seconds as an integer
-CREATE FUNCTION pgmq.read(
-    queue_name TEXT,
-    vt INTEGER,
-    qty INTEGER,
-    conditional JSONB DEFAULT '{}'
-) RETURNS SETOF pgmq.message_record AS $$
-    SELECT * FROM pgmq.read(queue_name, clock_timestamp() + make_interval(secs => vt), qty, conditional);
-$$ LANGUAGE sql;
 
 -- read_grouped
 -- reads messages with AWS SQS FIFO-style batch retrieval behavior
 -- attempts to return as many messages as possible from the same message group
 CREATE FUNCTION pgmq.read_grouped(
     queue_name TEXT,
-    vt TIMESTAMP WITH TIME ZONE,
+    vt DOUBLE PRECISION,
     qty INTEGER
 )
 RETURNS SETOF pgmq.message_record AS $$
@@ -464,35 +423,24 @@ BEGIN
         )
         UPDATE pgmq.%I m
         SET
-            vt = %L,
+            vt = clock_timestamp() + %L,
             read_ct = read_ct + 1,
             last_read_at = clock_timestamp()
         FROM selected_messages sm
         WHERE m.msg_id = sm.msg_id
         RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.last_read_at, m.vt, m.message, m.headers;
         $QUERY$,
-        qtable, qtable, qtable, qtable, qtable, vt
+        qtable, qtable, qtable, qtable, qtable, make_interval(secs => vt)
     );
     RETURN QUERY EXECUTE sql USING qty;
 END;
 $$ LANGUAGE plpgsql;
 
--- read_grouped - overload that accepts `vt` as a delay in seconds as an integer
-CREATE FUNCTION pgmq.read_grouped(
-    queue_name TEXT,
-    vt INTEGER,
-    qty INTEGER
-)
-RETURNS SETOF pgmq.message_record AS $$
-    SELECT * FROM pgmq.read_grouped(queue_name, clock_timestamp() + make_interval(secs => vt), qty);
-$$ LANGUAGE sql;
-
-
 -- read_grouped_with_poll
 -- reads messages with AWS SQS FIFO-style batch retrieval behavior, with polling support
 CREATE FUNCTION pgmq.read_grouped_with_poll(
     queue_name TEXT,
-    vt TIMESTAMP WITH TIME ZONE,
+    vt DOUBLE PRECISION,
     qty INTEGER,
     max_poll_seconds INTEGER DEFAULT 5,
     poll_interval_ms INTEGER DEFAULT 100
@@ -522,22 +470,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- read_grouped_with_poll - overload that accepts `vt` as a delay in seconds as an integer
-CREATE FUNCTION pgmq.read_grouped_with_poll(
-    queue_name TEXT,
-    vt INTEGER,
-    qty INTEGER,
-    max_poll_seconds INTEGER DEFAULT 5,
-    poll_interval_ms INTEGER DEFAULT 100
-) RETURNS SETOF pgmq.message_record AS $$
-    SELECT * FROM pgmq.read_grouped_with_poll(queue_name, clock_timestamp() + make_interval(secs => vt), qty, max_poll_seconds, poll_interval_ms);
-$$ LANGUAGE sql;
-
 ---- read_with_poll
 ---- reads a number of messages from a queue, setting a visibility timeout on them
 CREATE FUNCTION pgmq.read_with_poll(
     queue_name TEXT,
-    vt TIMESTAMP WITH TIME ZONE,
+    vt DOUBLE PRECISION,
     qty INTEGER,
     max_poll_seconds INTEGER DEFAULT 5,
     poll_interval_ms INTEGER DEFAULT 100,
@@ -573,13 +510,13 @@ BEGIN
           UPDATE pgmq.%I m
           SET
               last_read_at = clock_timestamp(),
-              vt = %L,
+              vt = clock_timestamp() + %L,
               read_ct = read_ct + 1
           FROM cte
           WHERE m.msg_id = cte.msg_id
           RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.last_read_at, m.vt, m.message, m.headers;
           $QUERY$,
-          qtable, conditional, qtable, vt
+          qtable, conditional, qtable, make_interval(secs => vt)
       );
 
       FOR r IN
@@ -595,18 +532,6 @@ BEGIN
     END LOOP;
 END;
 $$ LANGUAGE plpgsql;
-
--- read_with_poll - overload that accepts `vt` as a delay in seconds as an integer
-CREATE FUNCTION pgmq.read_with_poll(
-    queue_name TEXT,
-    vt INTEGER,
-    qty INTEGER,
-    max_poll_seconds INTEGER DEFAULT 5,
-    poll_interval_ms INTEGER DEFAULT 100,
-    conditional JSONB DEFAULT '{}'
-) RETURNS SETOF pgmq.message_record AS $$
-    SELECT * FROM pgmq.read_with_poll(queue_name, clock_timestamp() + make_interval(secs => vt), qty, max_poll_seconds, poll_interval_ms, conditional);
-$$ LANGUAGE sql;
 
 ---- archive
 ---- removes a message from the queue, and sends it to the archive, where its
@@ -1043,7 +968,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Sets integer vt of a message, returns it
-CREATE FUNCTION pgmq.set_vt(queue_name TEXT, msg_id BIGINT, vt INTEGER)
+CREATE FUNCTION pgmq.set_vt(queue_name TEXT, msg_id BIGINT, vt DOUBLE PRECISION)
 RETURNS SETOF pgmq.message_record AS $$
     SELECT * FROM pgmq.set_vt(queue_name, msg_id, clock_timestamp() + make_interval(secs => vt));
 $$ LANGUAGE sql;
@@ -1076,7 +1001,7 @@ $$ LANGUAGE plpgsql;
 CREATE FUNCTION pgmq.set_vt(
     queue_name TEXT,
     msg_ids BIGINT[],
-    vt INTEGER
+    vt DOUBLE PRECISION
 )
 RETURNS SETOF pgmq.message_record AS $$
     SELECT * FROM pgmq.set_vt(queue_name, msg_ids, clock_timestamp() + make_interval(secs => vt));
