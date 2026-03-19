@@ -1,7 +1,10 @@
--- Todo: create the integer functions as well for backwards compatibility
+-- This migration script updates the existing pgmq.read* functions to accept the `vt` parameter as either
+-- a `DOUBLE PRECISION` or an `INTEGER`.
 
 -- read_grouped_round_robin
 -- reads messages while preserving FIFO within groups and interleaving across groups (layered round-robin)
+-- `vt` is an offset/delay in seconds. When the message is read from the DB, its `vt` column is updated to the
+-- current timestamp + the `vt` offset.
 CREATE OR REPLACE FUNCTION pgmq.read_grouped_rr(
     queue_name TEXT,
     vt DOUBLE PRECISION,
@@ -85,8 +88,20 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- read_grouped_round_robin - overload that accepts `vt` as an integer (for backwards compatibility)
+CREATE OR REPLACE FUNCTION pgmq.read_grouped_rr(
+    queue_name TEXT,
+    vt INTEGER,
+    qty INTEGER
+)
+RETURNS SETOF pgmq.message_record AS $$
+    SELECT * FROM pgmq.read_grouped_rr(queue_name, vt::double precision, qty);
+$$ LANGUAGE sql;
+
 -- read_grouped_rr_with_poll
 -- reads messages using round-robin layering across groups, with polling support
+-- `vt` is an offset/delay in seconds. When the message is read from the DB, its `vt` column is updated to the
+-- current timestamp + the `vt` offset.
 CREATE OR REPLACE FUNCTION pgmq.read_grouped_rr_with_poll(
     queue_name TEXT,
     vt DOUBLE PRECISION,
@@ -119,8 +134,22 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- read_grouped_rr_with_poll - overload that accepts `vt` as an integer (for backwards compatibility)
+CREATE OR REPLACE FUNCTION pgmq.read_grouped_rr_with_poll(
+    queue_name TEXT,
+    vt INTEGER,
+    qty INTEGER,
+    max_poll_seconds INTEGER DEFAULT 5,
+    poll_interval_ms INTEGER DEFAULT 100
+)
+RETURNS SETOF pgmq.message_record AS $$
+    SELECT * FROM pgmq.read_grouped_rr_with_poll(queue_name, vt::double precision, qty, max_poll_seconds, poll_interval_ms);
+$$ LANGUAGE sql;
+
 -- read_grouped_head:  read the head of N different FIFO groups in a single operation.
 -- This supports horizontal scaling by processing groups in parallel while ensuring message ordering is preserved per group.
+-- `vt` is an offset/delay in seconds. When the message is read from the DB, its `vt` column is updated to the
+-- current timestamp + the `vt` offset.
 CREATE OR REPLACE FUNCTION pgmq.read_grouped_head(
     queue_name TEXT,
     vt DOUBLE PRECISION,
@@ -166,20 +195,20 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- a helper to format table names and check for invalid characters
-CREATE OR REPLACE FUNCTION pgmq.format_table_name(queue_name text, prefix text)
-RETURNS TEXT AS $$
-BEGIN
-    IF queue_name ~ '\$|;|--|'''
-    THEN
-        RAISE EXCEPTION 'queue name contains invalid characters: $, ;, --, or \''';
-    END IF;
-    RETURN lower(prefix || '_' || queue_name);
-END;
-$$ LANGUAGE plpgsql;
+-- read_grouped_head - overload that accepts `vt` as an integer (for backwards compatibility)
+CREATE OR REPLACE FUNCTION pgmq.read_grouped_head(
+    queue_name TEXT,
+    vt INTEGER,
+    qty INTEGER
+)
+RETURNS SETOF pgmq.message_record AS $$
+    SELECT * from pgmq.read_grouped_head(queue_name, vt::double precision, qty)
+$$ LANGUAGE sql;
 
 -- read
 -- reads a number of messages from a queue, setting a visibility timeout on them
+-- `vt` is an offset/delay in seconds. When the message is read from the DB, its `vt` column is updated to the
+-- current timestamp + the `vt` offset.
 CREATE OR REPLACE FUNCTION pgmq.read(
     queue_name TEXT,
     vt DOUBLE PRECISION,
@@ -220,9 +249,21 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- read - overload that accepts `vt` as an integer (for backwards compatibility)
+CREATE OR REPLACE FUNCTION pgmq.read(
+    queue_name TEXT,
+    vt INTEGER,
+    qty INTEGER,
+    conditional JSONB DEFAULT '{}'
+) RETURNS SETOF pgmq.message_record AS $$
+    SELECT * FROM pgmq.read(queue_name, vt::double precision, qty, conditional);
+$$ LANGUAGE sql;
+
 -- read_grouped
 -- reads messages with AWS SQS FIFO-style batch retrieval behavior
 -- attempts to return as many messages as possible from the same message group
+-- `vt` is an offset/delay in seconds. When the message is read from the DB, its `vt` column is updated to the
+-- current timestamp + the `vt` offset.
 CREATE OR REPLACE FUNCTION pgmq.read_grouped(
     queue_name TEXT,
     vt DOUBLE PRECISION,
@@ -320,8 +361,20 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- read_grouped - overload that accepts `vt` as an integer (for backwards compatibility)
+CREATE OR REPLACE FUNCTION pgmq.read_grouped(
+    queue_name TEXT,
+    vt INTEGER,
+    qty INTEGER
+)
+RETURNS SETOF pgmq.message_record AS $$
+    SELECT * FROM pgmq.read_grouped(queue_name, vt::double precision, qty);
+$$ LANGUAGE sql;
+
 -- read_grouped_with_poll
 -- reads messages with AWS SQS FIFO-style batch retrieval behavior, with polling support
+-- `vt` is an offset/delay in seconds. When the message is read from the DB, its `vt` column is updated to the
+-- current timestamp + the `vt` offset.
 CREATE OR REPLACE FUNCTION pgmq.read_grouped_with_poll(
     queue_name TEXT,
     vt DOUBLE PRECISION,
@@ -354,8 +407,21 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- read_grouped_with_poll - overload that accepts `vt` as an integer (for backwards compatibility)
+CREATE OR REPLACE FUNCTION pgmq.read_grouped_with_poll(
+    queue_name TEXT,
+    vt INTEGER,
+    qty INTEGER,
+    max_poll_seconds INTEGER DEFAULT 5,
+    poll_interval_ms INTEGER DEFAULT 100
+) RETURNS SETOF pgmq.message_record AS $$
+    SELECT * FROM pgmq.read_grouped_with_poll(queue_name, vt::double precision, qty, max_poll_seconds, poll_interval_ms);
+$$ LANGUAGE sql;
+
 ---- read_with_poll
 ---- reads a number of messages from a queue, setting a visibility timeout on them
+-- `vt` is an offset/delay in seconds. When the message is read from the DB, its `vt` column is updated to the
+-- current timestamp + the `vt` offset.
 CREATE OR REPLACE FUNCTION pgmq.read_with_poll(
     queue_name TEXT,
     vt DOUBLE PRECISION,
@@ -417,18 +483,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Sets integer vt of a message, returns it
-CREATE FUNCTION pgmq.set_vt(queue_name TEXT, msg_id BIGINT, vt DOUBLE PRECISION)
-RETURNS SETOF pgmq.message_record AS $$
-    SELECT * FROM pgmq.set_vt(queue_name, msg_id, clock_timestamp() + make_interval(secs => vt));
-$$ LANGUAGE sql;
-
--- Sets integer vt of multiple messages, returns them
-CREATE FUNCTION pgmq.set_vt(
+-- read_with_poll - overload that accepts `vt` as an integer (for backwards compatibility)
+CREATE OR REPLACE FUNCTION pgmq.read_with_poll(
     queue_name TEXT,
-    msg_ids BIGINT[],
-    vt DOUBLE PRECISION
-)
-RETURNS SETOF pgmq.message_record AS $$
-    SELECT * FROM pgmq.set_vt(queue_name, msg_ids, clock_timestamp() + make_interval(secs => vt));
+    vt INTEGER,
+    qty INTEGER,
+    max_poll_seconds INTEGER DEFAULT 5,
+    poll_interval_ms INTEGER DEFAULT 100,
+    conditional JSONB DEFAULT '{}'
+) RETURNS SETOF pgmq.message_record AS $$
+    SELECT * FROM pgmq.read_with_poll(queue_name, vt::double precision, qty, max_poll_seconds, poll_interval_ms, conditional);
 $$ LANGUAGE sql;
