@@ -99,10 +99,10 @@ mod initialization {
             .await
             .unwrap();
 
-        #[cfg(feature = "install-sql-embedded")]
+        // #[cfg(feature = "install-sql-embedded")]
         let result = queue.install_sql_from_embedded().await.map(|_| true);
-        #[cfg(not(feature = "install-sql"))]
-        let result = queue.init().await;
+        // #[cfg(not(feature = "install-sql"))]
+        // let result = queue.init().await;
 
         result.expect("failed to init pgmq");
     }

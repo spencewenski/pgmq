@@ -2,10 +2,10 @@ pub mod duration;
 pub mod queue_name;
 
 use chrono::{DateTime, Utc};
+use diesel::{Queryable, Selectable};
+pub use queue_name::QueueName;
 use serde_derive::Deserialize;
 use std::time::Duration;
-
-pub use queue_name::QueueName;
 
 /// Alias for the duration type expected for visibility timeout (`vt`) parameters, e.g. in
 /// [`crate::queue::Queue::send`] and [`crate::pg_ext::PGMQueueExt::send`]

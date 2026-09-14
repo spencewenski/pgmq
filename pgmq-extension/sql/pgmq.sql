@@ -917,7 +917,8 @@ BEGIN
             all_metrics.total_messages,
             q_summary.scrape_time,
             q_summary.queue_visible_length,
-            %L::bigint as default_partition_length
+            %L::bigint as default_partition_length,
+            1 as foo
         FROM q_summary, all_metrics
         $QUERY$,
         qtable, qtable || '_msg_id_seq', queue_name, default_partition_length

@@ -1,4 +1,5 @@
 //! Extracted Diesel SQL query functions. Can be used by both diesel and diesel-async.
+use crate::queue::diesel::schema::meta::dsl::meta;
 use crate::queue::diesel::sql::{
     pgmq_acquire_queue_lock, pgmq_archive, pgmq_bind_topic, pgmq_convert_archive_partitioned,
     pgmq_create, pgmq_create_fifo_index, pgmq_create_fifo_indexes_all, pgmq_create_partitioned,
@@ -16,6 +17,7 @@ use crate::types::{
     VisibilityTimeoutOffset,
 };
 use diesel::dsl::select;
+use diesel::query_builder::SelectStatement;
 use diesel::{ExpressionMethods, QueryDsl};
 
 #[diesel::dsl::auto_type(no_type_alias)]
@@ -286,9 +288,14 @@ pub fn metrics_query(queue_name: QueueName<'_>) -> _ {
     select(pgmq_metrics(queue_name))
 }
 
-#[diesel::dsl::auto_type(no_type_alias)]
-pub fn metrics_all_query() -> _ {
-    select(pgmq_metrics_all())
+// #[diesel::dsl::auto_type(no_type_alias)]
+// pub fn metrics_all_query() -> _ {
+//     select(pgmq_metrics_all())
+// }
+pub fn metrics_all_query() -> SelectStatement<diesel::query_builder::FromClause<pgmq_metrics_all>> {
+    // Todo: The `SelectStatement::simple` method is hidden from the API documentation, so I'm not
+    //  sure if it's safe/recommended to use it
+    SelectStatement::simple(pgmq_metrics_all())
 }
 
 #[diesel::dsl::auto_type(no_type_alias)]
