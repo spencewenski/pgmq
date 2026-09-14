@@ -226,7 +226,7 @@ impl QuerySource for pgmq_metrics_all {
 
         // As long as the order of these fields matches the order of the `PgQueueMetricsTuple`, the
         // order of the fields in the SQL type can be changed without breaking anything
-        sql("(queue_name, queue_length, newest_msg_age_sec, oldest_msg_age_sec, total_messages, scrape_time, queue_visible_length, default_partition_length, bar)")
+        sql("(queue_name, queue_length, newest_msg_age_sec, oldest_msg_age_sec, total_messages, scrape_time, queue_visible_length, default_partition_length)")
     }
 }
 

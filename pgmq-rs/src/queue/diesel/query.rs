@@ -292,6 +292,7 @@ pub fn metrics_query(queue_name: QueueName<'_>) -> _ {
 // pub fn metrics_all_query() -> _ {
 //     select(pgmq_metrics_all())
 // }
+// Todo: This requires using private traits. Is there another approach we can use?
 pub fn metrics_all_query() -> SelectStatement<diesel::query_builder::FromClause<pgmq_metrics_all>> {
     // Todo: The `SelectStatement::simple` method is hidden from the API documentation, so I'm not
     //  sure if it's safe/recommended to use it
