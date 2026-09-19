@@ -1,10 +1,12 @@
 use crate::queue::diesel::sql::PgMessage;
+use crate::types::message::{all_columns, msg_id, read_ct};
 use crate::types::{QueueName, VisibilityTimeoutOffset};
+use crate::Message;
 use diesel::pg::Pg;
 use diesel::query_builder::{AstPass, Query, QueryFragment, QueryId};
 use diesel::serialize::ToSql;
 use diesel::sql_types::*;
-use diesel::QueryResult;
+use diesel::{QueryResult, Selectable, SelectableHelper};
 // Todo: Macro to generate all of this?
 // Todo: Custom `sql_function` macro to use named parameters
 // Todo: Custom `select` to add `FROM` clause and specific columns?
@@ -62,25 +64,35 @@ where
     Qty: ToSql<Integer, Pg>,
 {
     fn walk_ast<'b>(&'b self, mut out: AstPass<'_, 'b, Pg>) -> QueryResult<()> {
+        // Todo: Somehow allow calling ".select" on a function struct to allow each invocation to
+        //  configure which fields to select instead of always selecting all fields.
+        out.push_sql("SELECT ");
+
         // Todo: statically generate the list of fields to select
-        out.push_sql("SELECT (msg_id, read_ct, enqueued_at, last_read_at, vt, message, headers) FROM pgmq.read(");
+        out.push_sql("(");
+        all_columns.walk_ast(out.reborrow())?;
+        out.push_sql(") ");
+
+        out.push_sql("FROM ");
+
+        // Todo: Implement `FunctionFragment` and do `<Self as FunctionFragment<#backend>>::FUNCTION_NAME` instead?
+        out.push_sql("pgmq.read");
+
+        out.push_sql("(");
 
         // Todo: statically generate the parameters (allows changing parameter order in the SQL without breaking the rust client)
-        // out.push_sql("queue_name=>");
+        out.push_sql("queue_name=>");
         out.push_bind_param::<Text, _>(&self.queue_name)?;
-        // out.push_sql("::text");
 
         out.push_sql(", ");
 
-        // out.push_sql("vt=>");
+        out.push_sql("vt=>");
         out.push_bind_param::<Integer, _>(&self.vt)?;
-        // out.push_sql("::integer");
 
         out.push_sql(", ");
 
-        // out.push_sql("qty=>");
+        out.push_sql("qty=>");
         out.push_bind_param::<Integer, _>(&self.qty)?;
-        // out.push_sql("::integer");
 
         out.push_sql(")");
         Ok(())

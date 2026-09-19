@@ -1,6 +1,0 @@
----
-source: src/queue/diesel/query/mod.rs
-assertion_line: 444
-expression: "debug_query::<Pg,\n_>(&super::read_query(\"queue\".try_into().unwrap(), 10.into(), 1)).to_string()"
----
-SELECT (msg_id, read_ct, enqueued_at, last_read_at, vt, message, headers) FROM pgmq.read($1, $2, $3) -- binds: ["queue", 10, 1]

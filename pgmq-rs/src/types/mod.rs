@@ -99,6 +99,122 @@ pub struct Message<T = serde_json::Value, H = serde_json::Value> {
     pub headers: Option<H>,
 }
 
+#[cfg(feature = "diesel")]
+#[allow(non_camel_case_types)]
+pub mod message {
+    use diesel::pg::Pg;
+    use diesel::query_builder::{AstPass, QueryFragment};
+    use diesel::sql_types::{BigInt, Integer, Json, Nullable, Timestamptz};
+    use diesel::{Expression, QueryResult};
+
+    pub struct msg_id;
+    pub struct read_ct;
+    pub struct enqueued_at;
+    pub struct last_read_at;
+    pub struct vt;
+    pub struct message;
+    pub struct headers;
+
+    pub type AllColumns = (
+        msg_id,
+        read_ct,
+        enqueued_at,
+        last_read_at,
+        vt,
+        message,
+        headers,
+    );
+    pub const all_columns: AllColumns = (
+        msg_id,
+        read_ct,
+        enqueued_at,
+        last_read_at,
+        vt,
+        message,
+        headers,
+    );
+
+    impl Expression for msg_id {
+        type SqlType = BigInt;
+    }
+
+    impl Expression for read_ct {
+        type SqlType = Integer;
+    }
+
+    impl Expression for enqueued_at {
+        type SqlType = Timestamptz;
+    }
+
+    impl Expression for last_read_at {
+        type SqlType = Nullable<Timestamptz>;
+    }
+
+    impl Expression for vt {
+        type SqlType = Timestamptz;
+    }
+
+    impl Expression for message {
+        type SqlType = Json;
+    }
+
+    impl Expression for headers {
+        type SqlType = Nullable<Json>;
+    }
+
+    impl<T, H> diesel::Selectable<Pg> for super::Message<T, H> {
+        type SelectExpression = AllColumns;
+
+        fn construct_selection() -> Self::SelectExpression {
+            all_columns
+        }
+    }
+
+    impl QueryFragment<Pg> for msg_id {
+        fn walk_ast<'b>(&'b self, mut out: AstPass<'_, 'b, Pg>) -> QueryResult<()> {
+            out.push_sql("msg_id");
+            Ok(())
+        }
+    }
+
+    impl QueryFragment<Pg> for read_ct {
+        fn walk_ast<'b>(&'b self, mut out: AstPass<'_, 'b, Pg>) -> QueryResult<()> {
+            out.push_sql("read_ct");
+            Ok(())
+        }
+    }
+    impl QueryFragment<Pg> for enqueued_at {
+        fn walk_ast<'b>(&'b self, mut out: AstPass<'_, 'b, Pg>) -> QueryResult<()> {
+            out.push_sql("enqueued_at");
+            Ok(())
+        }
+    }
+    impl QueryFragment<Pg> for last_read_at {
+        fn walk_ast<'b>(&'b self, mut out: AstPass<'_, 'b, Pg>) -> QueryResult<()> {
+            out.push_sql("last_read_at");
+            Ok(())
+        }
+    }
+    impl QueryFragment<Pg> for vt {
+        fn walk_ast<'b>(&'b self, mut out: AstPass<'_, 'b, Pg>) -> QueryResult<()> {
+            out.push_sql("vt");
+            Ok(())
+        }
+    }
+    impl QueryFragment<Pg> for message {
+        fn walk_ast<'b>(&'b self, mut out: AstPass<'_, 'b, Pg>) -> QueryResult<()> {
+            out.push_sql("message");
+            Ok(())
+        }
+    }
+    impl QueryFragment<Pg> for headers {
+        fn walk_ast<'b>(&'b self, mut out: AstPass<'_, 'b, Pg>) -> QueryResult<()> {
+            out.push_sql("headers");
+            Ok(())
+        }
+    }
+}
+
 /// A row returned by the `pgmq.send_batch_topic` SQL function(s).
 #[derive(Clone, Debug, Deserialize)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
