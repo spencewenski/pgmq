@@ -1,2 +1,3 @@
 [patch.crates-io]
-diesel = { git = "https://github.com/diesel-rs/diesel.git", rev = "9cca182377c40918a93120181b54c94317d68359" }
+#diesel = { git = "https://github.com/diesel-rs/diesel.git", rev = "9cca182377c40918a93120181b54c94317d68359" }
+diesel = { path = "../../diesel/diesel" }

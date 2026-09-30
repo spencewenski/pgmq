@@ -11,7 +11,6 @@ use diesel::{PgConnection, QueryDsl, SelectableHelper, declare_sql_function};
 
 #[declare_sql_function]
 extern "SQL" {
-    // Todo: How to tie the `PgQueueMetrics` return type to its utility types?
     #[sql_name = "pgmq.metrics"]
     fn pgmq_metrics(queue_name: Text) -> PgQueueMetrics;
 }
@@ -37,26 +36,27 @@ pub fn execute(conn: &mut PgConnection, queue: &str) {
 /// [`crate::metrics::PgQueueMetrics`] type. [`AppearsOnTable`] and [`SelectableExpression`] need
 /// to be implemented for each field of the [`crate::metrics::PgQueueMetrics`] type.
 mod impls {
-    use diesel::QuerySource;
+    use crate::metrics::PgQueueMetrics;
     use diesel::query_builder::AsQuery;
-    use diesel::query_source::QueryRelation;
-    use diesel::{AppearsOnTable, SelectableExpression};
+    use diesel::query_source::{Function, QueryRelation};
+    use diesel::sql_types::CompositeType;
+    use diesel::{Expression, QuerySource};
 
     impl<A: Copy> QuerySource for crate::metrics::query_source::pgmq_metrics_utils::pgmq_metrics<A> {
         type FromClause = Self;
-        type DefaultSelection = crate::metrics::utility_types::AllColumns;
+        type DefaultSelection = <PgQueueMetrics as CompositeType>::AllFields;
 
         fn from_clause(&self) -> Self::FromClause {
             *self
         }
 
         fn default_selection(&self) -> Self::DefaultSelection {
-            crate::metrics::utility_types::all_columns
+            <PgQueueMetrics as CompositeType>::all_fields()
         }
     }
 
     impl<A: Copy> AsQuery for crate::metrics::query_source::pgmq_metrics_utils::pgmq_metrics<A> {
-        type SqlType = crate::metrics::utility_types::SqlType;
+        type SqlType = <<PgQueueMetrics as CompositeType>::AllFields as Expression>::SqlType;
         // Todo: This type is internal and intended to be used by the `table!/`view!` macros. Can we
         //  update diesel directly to generate this impl from the `declare_sql_function` macro?
         type Query = diesel::internal::table_macro::SelectStatement<
@@ -69,77 +69,15 @@ mod impls {
     }
 
     impl<A: Copy> QueryRelation for crate::metrics::query_source::pgmq_metrics_utils::pgmq_metrics<A> {
-        type AllColumns = crate::metrics::utility_types::AllColumns;
+        type AllColumns = <PgQueueMetrics as CompositeType>::AllFields;
 
         fn all_columns() -> Self::AllColumns {
-            crate::metrics::utility_types::all_columns
+            <PgQueueMetrics as CompositeType>::all_fields()
         }
     }
 
-    impl<A> AppearsOnTable<crate::metrics::query_source::pgmq_metrics_utils::pgmq_metrics<A>>
-        for crate::metrics::utility_types::queue_name
-    {
-    }
-    impl<A> AppearsOnTable<crate::metrics::query_source::pgmq_metrics_utils::pgmq_metrics<A>>
-        for crate::metrics::utility_types::queue_length
-    {
-    }
-    impl<A> AppearsOnTable<crate::metrics::query_source::pgmq_metrics_utils::pgmq_metrics<A>>
-        for crate::metrics::utility_types::newest_msg_age_sec
-    {
-    }
-    impl<A> AppearsOnTable<crate::metrics::query_source::pgmq_metrics_utils::pgmq_metrics<A>>
-        for crate::metrics::utility_types::oldest_msg_age_sec
-    {
-    }
-    impl<A> AppearsOnTable<crate::metrics::query_source::pgmq_metrics_utils::pgmq_metrics<A>>
-        for crate::metrics::utility_types::total_messages
-    {
-    }
-    impl<A> AppearsOnTable<crate::metrics::query_source::pgmq_metrics_utils::pgmq_metrics<A>>
-        for crate::metrics::utility_types::scrape_time
-    {
-    }
-    impl<A> AppearsOnTable<crate::metrics::query_source::pgmq_metrics_utils::pgmq_metrics<A>>
-        for crate::metrics::utility_types::queue_visible_length
-    {
-    }
-    impl<A> AppearsOnTable<crate::metrics::query_source::pgmq_metrics_utils::pgmq_metrics<A>>
-        for crate::metrics::utility_types::default_partition_length
-    {
-    }
-
-    impl<A> SelectableExpression<crate::metrics::query_source::pgmq_metrics_utils::pgmq_metrics<A>>
-        for crate::metrics::utility_types::queue_name
-    {
-    }
-    impl<A> SelectableExpression<crate::metrics::query_source::pgmq_metrics_utils::pgmq_metrics<A>>
-        for crate::metrics::utility_types::queue_length
-    {
-    }
-    impl<A> SelectableExpression<crate::metrics::query_source::pgmq_metrics_utils::pgmq_metrics<A>>
-        for crate::metrics::utility_types::newest_msg_age_sec
-    {
-    }
-    impl<A> SelectableExpression<crate::metrics::query_source::pgmq_metrics_utils::pgmq_metrics<A>>
-        for crate::metrics::utility_types::oldest_msg_age_sec
-    {
-    }
-    impl<A> SelectableExpression<crate::metrics::query_source::pgmq_metrics_utils::pgmq_metrics<A>>
-        for crate::metrics::utility_types::total_messages
-    {
-    }
-    impl<A> SelectableExpression<crate::metrics::query_source::pgmq_metrics_utils::pgmq_metrics<A>>
-        for crate::metrics::utility_types::scrape_time
-    {
-    }
-    impl<A> SelectableExpression<crate::metrics::query_source::pgmq_metrics_utils::pgmq_metrics<A>>
-        for crate::metrics::utility_types::queue_visible_length
-    {
-    }
-    impl<A> SelectableExpression<crate::metrics::query_source::pgmq_metrics_utils::pgmq_metrics<A>>
-        for crate::metrics::utility_types::default_partition_length
-    {
+    impl<A: Copy> Function for crate::metrics::query_source::pgmq_metrics_utils::pgmq_metrics<A> {
+        type Return = PgQueueMetrics;
     }
 }
 
