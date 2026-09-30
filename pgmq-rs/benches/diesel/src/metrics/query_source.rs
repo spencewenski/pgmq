@@ -42,6 +42,8 @@ mod impls {
     use diesel::sql_types::CompositeType;
     use diesel::{Expression, QuerySource};
 
+    // As far as I know, these traits will need to be generated via the `declare_sql_function` macro
+    // because adding an auto-impl will conflict with the existing auto-impl for the `Table` trait.
     impl<A: Copy> QuerySource for crate::metrics::query_source::pgmq_metrics_utils::pgmq_metrics<A> {
         type FromClause = Self;
         type DefaultSelection = <PgQueueMetrics as CompositeType>::AllFields;
