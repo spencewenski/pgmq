@@ -135,9 +135,7 @@ pub mod utility_types {
     use diesel::pg::Pg;
     use diesel::query_builder::{AstPass, QueryFragment};
     use diesel::query_source::Function;
-    use diesel::sql_types::{
-        BigInt, CompositeField, CompositeType, Integer, Nullable, Text, Timestamptz,
-    };
+    use diesel::sql_types::{BigInt, CompositeType, Integer, Nullable, Text, Timestamptz};
     use diesel::{AppearsOnTable, Expression, QueryId, QueryResult, SelectableExpression};
 
     // Todo: Also generate a `star` field?
@@ -291,14 +289,23 @@ pub mod utility_types {
         }
     }
 
-    impl CompositeField<PgQueueMetrics> for queue_name {}
-    impl CompositeField<PgQueueMetrics> for queue_length {}
-    impl CompositeField<PgQueueMetrics> for newest_msg_age_sec {}
-    impl CompositeField<PgQueueMetrics> for oldest_msg_age_sec {}
-    impl CompositeField<PgQueueMetrics> for total_messages {}
-    impl CompositeField<PgQueueMetrics> for scrape_time {}
-    impl CompositeField<PgQueueMetrics> for queue_visible_length {}
-    impl CompositeField<PgQueueMetrics> for default_partition_length {}
+    impl AppearsOnTable<PgQueueMetrics> for queue_name {}
+    impl AppearsOnTable<PgQueueMetrics> for queue_length {}
+    impl AppearsOnTable<PgQueueMetrics> for newest_msg_age_sec {}
+    impl AppearsOnTable<PgQueueMetrics> for oldest_msg_age_sec {}
+    impl AppearsOnTable<PgQueueMetrics> for total_messages {}
+    impl AppearsOnTable<PgQueueMetrics> for scrape_time {}
+    impl AppearsOnTable<PgQueueMetrics> for queue_visible_length {}
+    impl AppearsOnTable<PgQueueMetrics> for default_partition_length {}
+
+    impl SelectableExpression<PgQueueMetrics> for queue_name {}
+    impl SelectableExpression<PgQueueMetrics> for queue_length {}
+    impl SelectableExpression<PgQueueMetrics> for newest_msg_age_sec {}
+    impl SelectableExpression<PgQueueMetrics> for oldest_msg_age_sec {}
+    impl SelectableExpression<PgQueueMetrics> for total_messages {}
+    impl SelectableExpression<PgQueueMetrics> for scrape_time {}
+    impl SelectableExpression<PgQueueMetrics> for queue_visible_length {}
+    impl SelectableExpression<PgQueueMetrics> for default_partition_length {}
 
     impl<F> AppearsOnTable<F> for queue_name where F: Function<Return = PgQueueMetrics> {}
     impl<F> AppearsOnTable<F> for queue_length where F: Function<Return = PgQueueMetrics> {}
